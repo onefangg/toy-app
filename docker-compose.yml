@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17.4
+    ports:
+     - "5432:5432"
+    environment:
+      POSTGRES_USER: "db_owner"
+      POSTGRES_PASSWORD: "testing"
+      POSTGRES_DB: "storage"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./load_init_migrations.sql:/docker-entrypoint-initdb.d/load_init_migrations.sql
+    restart: unless-stopped
+    command: -c log_statement=all
+    networks:
+      - full_stack
+
+volumes:
+  db-data: {}
+  cache:
+    driver: local
+
+networks:
+  full_stack:
+    name: full_stack
