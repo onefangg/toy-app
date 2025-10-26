@@ -8,7 +8,7 @@ use axum::routing::{get_service, post};
 use sqlx::{postgres::PgPoolOptions};
 use tower_http::services::ServeDir;
 use crate::common::AppState;
-use crate::routes::sign_up;
+use crate::routes::{login, sign_up};
 
 async fn root() -> &'static str {
     "Hello, World!"
@@ -28,6 +28,7 @@ async fn main() {
         .fallback_service(get_service(ServeDir::new("./ui")))
         .route("/", get(root))
         .route("/sign-up", post(sign_up))
+        .route("/login", post(login))
         .with_state(AppState { pool: pool });
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
