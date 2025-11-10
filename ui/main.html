@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:hx-on="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <title>Toy App</title>
@@ -8,17 +8,38 @@
 <body>
 
 
-    <form id='login-form' hx-encoding='application/x-www-form-urlencoded' hx-post="/login">
+    <form id='login-form'
+          hx-encoding='application/x-www-form-urlencoded'
+          hx-post="/login"
+          hx-target="#login-content"
+          hx-on::after-request=" if (event.detail.successful) {
+              const response = JSON.parse(event.detail.xhr.responseText);
+              localStorage.setItem('token', response.token);
+          }"
+    >
         <input name="username" type="text" placeholder="Enter your user name"/>
         <input name="password" type="password" placeholder="Enter password"/>
         <button type="submit">Login</button>
     </form>
+    <div id="login-content"></div>
 
-    <form id='sign-up-form' hx-encoding='application/x-www-form-urlencoded' hx-post="/sign-up">
+    <form id='sign-up-form'
+          hx-encoding='application/x-www-form-urlencoded'
+          hx-post="/sign-up"
+    >
         <input name="username" type="text" placeholder="Enter your user name"/>
         <input name="password" type="password" placeholder="Enter password"/>
         <button type="submit" >Sign Up!</button>
     </form>
+    <button hx-get="/profile">Get your token</button>
 
+    <script>
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            const bearerToken = localStorage.getItem('token');
+            if (bearerToken) {
+                event.detail.headers['Authorization'] = `Bearer ${bearerToken}`;
+            }
+        });
+    </script>
 </body>
 </html>

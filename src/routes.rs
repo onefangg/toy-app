@@ -4,7 +4,8 @@ use axum::http::StatusCode;
 use axum::{Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::common::AppState;
+use crate::auth::{generate_token, AuthBody};
+use crate::common::{AppState, AuthUser, User};
 
 #[derive(serde::Deserialize)]
 pub struct UserCredentialsForm {
@@ -16,14 +17,6 @@ pub struct UserCredentialsForm {
 pub struct SignUpResponse {
     user_id: Uuid,
 }
-
-struct User {
-    id: Uuid,
-    username: String,
-    password: String,
-}
-
-
 
 #[axum::debug_handler]
 pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Json<SignUpResponse> {
@@ -38,7 +31,7 @@ pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredenti
 }
 
 
-pub async fn login(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Json<&'static str> {
+pub async fn login(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Json<AuthBody> {
     let matching_user = sqlx::query!(r#"
         select id, username, (crypt($2, password) = password) as verify from app.users where username = $1"#,
         form.username,
@@ -46,10 +39,16 @@ pub async fn login(State(pool): State<AppState>, Form(form): Form<UserCredential
     ).fetch_optional(&pool.pool)
     .await.map_err(internal_error);
 
-    if matching_user.unwrap().unwrap().verify.expect("No matching DB") {
-        return Json("OK")
+    let parsed_user = matching_user.unwrap().unwrap();
+    if parsed_user.verify.expect("No matching DB") {
+        let gen_token = generate_token(User::new(parsed_user.id, parsed_user.username)).unwrap();
+        return Json(AuthBody::new(gen_token));
     }
-    Json("No matching password")
+    panic!("unreachable code?")
+}
+
+pub async fn profile(AuthUser(user): AuthUser) -> Json<String> {
+    Json(format!("user {:?}", user.username.as_str()))
 }
 
 fn internal_error<E>(err: E) -> (StatusCode, String)
