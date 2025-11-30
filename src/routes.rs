@@ -18,7 +18,6 @@ pub struct SignUpResponse {
     user_id: Uuid,
 }
 
-#[axum::debug_handler]
 pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Json<SignUpResponse> {
     let user_id = sqlx::query_scalar!(
         r#"insert into app.users (username, password) values ($1, crypt($2, gen_salt('md5'))) returning id"#,

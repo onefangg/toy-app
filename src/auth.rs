@@ -3,7 +3,7 @@ use axum::{
     extract::{FromRef, FromRequestParts},
     http::{request::Parts, StatusCode, HeaderMap},
 };
-
+use axum::response::IntoResponse;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use chrono::{Utc, Duration};
 use serde::{Deserialize, Serialize};
@@ -33,24 +33,52 @@ impl AuthBody {
     }
 }
 
+#[derive(Debug)]
+pub struct AuthError {
+    status_code: StatusCode,
+    message:  &'static str,
+}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> axum::response::Response {
+        tracing::error!("Auth error occurred with status code {:?} and {:?}", self.status_code, self.message);
+        self.status_code.into_response()
+    }
+}
+
 impl<S> FromRequestParts<S> for AuthUser where
     AppState: FromRef<S>,
     S: Send + Sync,
 {
-    type Rejection = StatusCode;
+    type Rejection = AuthError;
     async fn from_request_parts(
         parts: &mut Parts,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
         let app_state = AppState::from_ref(state);
         let headers = &parts.headers;
-        let token = extract_auth_from_header(headers).ok_or(StatusCode::UNAUTHORIZED)?;
+        let token = extract_auth_from_header(headers).ok_or(AuthError{
+            message: "No token present to be extracted",
+            status_code: StatusCode::UNAUTHORIZED
+        })?;
 
-        let jwt_secret = std::env::var("JWT_KEY").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        let claims = validate_token(&token, jwt_secret.as_str()).map_err(|_| StatusCode::UNAUTHORIZED)?;
-        let user_id = Uuid::from_str(&claims.sub).map_err(|_| StatusCode::UNAUTHORIZED)?;
+        let jwt_secret = std::env::var("JWT_KEY").map_err(|_| AuthError{
+            message: "JWT key not present",
+            status_code: StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+        let claims = validate_token(&token, jwt_secret.as_str()).map_err(|_| AuthError{
+            message: "Claims not matching",
+            status_code: StatusCode::UNAUTHORIZED
+        })?;
+        let user_id = Uuid::from_str(&claims.sub).map_err(|_| AuthError{
+            message: "sub must exist",
+            status_code: StatusCode::UNAUTHORIZED
+        })?;
 
-        let user = get_user(user_id, &app_state.pool).await.ok_or(StatusCode::UNAUTHORIZED)?;
+        let user = get_user(user_id, &app_state.pool).await.ok_or(AuthError{
+            message: "correct user",
+            status_code: StatusCode::UNAUTHORIZED
+        })?;
 
         Ok(AuthUser(user))
     }
@@ -58,12 +86,7 @@ impl<S> FromRequestParts<S> for AuthUser where
 
 fn extract_auth_from_header(headers: &HeaderMap) -> Option<String> {
     let auth_header = headers.get("Authorization")?.to_str().ok()?;
-
-    if auth_header.starts_with("Token ") {
-        Some(auth_header[6..].to_string())
-    } else {
-        None
-    }
+    Some(auth_header.to_string())
 }
 pub fn generate_token(user: User) -> Result<String, jsonwebtoken::errors::Error> {
     let header = Header::new(Algorithm::HS256);
