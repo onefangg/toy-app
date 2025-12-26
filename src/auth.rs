@@ -16,6 +16,7 @@ struct Claims {
     sub: String,
     exp: usize,
     iat: usize,
+
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -86,7 +87,7 @@ impl<S> FromRequestParts<S> for AuthUser where
 
 fn extract_auth_from_header(headers: &HeaderMap) -> Option<String> {
     let auth_header = headers.get("Authorization")?.to_str().ok()?;
-    Some(auth_header.to_string())
+    Some(auth_header[7..].to_string())
 }
 pub fn generate_token(user: User) -> Result<String, jsonwebtoken::errors::Error> {
     let header = Header::new(Algorithm::HS256);
