@@ -2,9 +2,11 @@ use axum::extract::State;
 use axum::Form;
 use axum::http::StatusCode;
 use axum::{Json};
+use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::auth::{generate_token, AuthBody};
+use crate::auth::{generate_token, AuthError};
 use crate::common::{AppState, AuthUser, User};
 
 #[derive(serde::Deserialize)]
@@ -24,26 +26,37 @@ pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredenti
         form.username,
         form.password
     ).fetch_one(&pool.pool)
-    .await.map_err(internal_error);
+        .await.map_err(internal_error);
 
     Json(SignUpResponse { user_id: user_id.unwrap() })
 }
 
 
-pub async fn login(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Json<AuthBody> {
+pub async fn login(State(pool): State<AppState>,
+                   jar: CookieJar,
+                   Form(form): Form<UserCredentialsForm>) -> Result<CookieJar, AuthError> {
     let matching_user = sqlx::query!(r#"
         select id, username, (crypt($2, password) = password) as verify from app.users where username = $1"#,
         form.username,
         form.password
     ).fetch_optional(&pool.pool)
-    .await.map_err(internal_error);
+        .await.map_err(internal_error);
 
     let parsed_user = matching_user.unwrap().unwrap();
     if parsed_user.verify.expect("No matching DB") {
         let gen_token = generate_token(User::new(parsed_user.id, parsed_user.username)).unwrap();
-        return Json(AuthBody::new(gen_token));
+
+        let mut cookie = Cookie::new("token", gen_token);
+        cookie.set_http_only(true);
+        cookie.set_same_site(SameSite::Lax);
+        cookie.set_secure(true);
+        Ok(jar.add(cookie))
+    } else {
+        Err(AuthError {
+            message: "No token present to be extracted",
+            status_code: StatusCode::UNAUTHORIZED,
+        })
     }
-    panic!("unreachable code?")
 }
 
 pub async fn profile(AuthUser(user): AuthUser) -> Json<String> {

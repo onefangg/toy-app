@@ -6,8 +6,6 @@
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
 </head>
 <body>
-
-
     <form id='login-form'
           hx-encoding='application/x-www-form-urlencoded'
           hx-post="/login"
@@ -33,13 +31,5 @@
     </form>
     <button hx-get="/profile">Get your token</button>
 
-    <script>
-        document.body.addEventListener('htmx:configRequest', (event) => {
-            const bearerToken = localStorage.getItem('token');
-            if (bearerToken) {
-                event.detail.headers['Authorization'] = `Bearer ${bearerToken}`;
-            }
-        });
-    </script>
 </body>
 </html>
