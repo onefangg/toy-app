@@ -3,10 +3,14 @@ mod common;
 mod auth;
 mod users;
 
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{routing::get, Router};
 use axum::routing::{get_service, post};
+use axum_server::tls_rustls::RustlsConfig;
 use sqlx::{postgres::PgPoolOptions};
 use tower_http::services::ServeDir;
 use tower_http::{trace, LatencyUnit};
@@ -16,15 +20,22 @@ use tracing::{Level, Span};
 use crate::common::AppState;
 use crate::routes::{login, profile, sign_out, sign_up};
 
-
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-
+        .with_max_level(Level::INFO)
         .init();
-
+    let config = RustlsConfig::from_pem_file(
+        PathBuf::from("./")
+            .join("certs")
+            .join("localhost+2.pem"),
+        PathBuf::from("./")
+            .join("certs")
+            .join("localhost+2-key.pem"),
+    )
+        .await
+        .unwrap();
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
@@ -33,7 +44,6 @@ async fn main() {
         .expect("Cannot connect to DB!");
 
     let app = Router::new()
-
         .fallback_service(get_service(ServeDir::new("./ui")))
         .route("/sign-up", post(sign_up))
         .route("/sign-out", post(sign_out))
@@ -55,6 +65,9 @@ async fn main() {
         )
         .with_state(AppState { pool });
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    axum_server::bind_rustls(addr, config)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }

@@ -3,3 +3,5 @@
 .sqlx/
 .env
 
+certs/**
+
