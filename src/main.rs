@@ -14,11 +14,8 @@ use tower_http::classify::ServerErrorsFailureClass;
 use tower_http::trace::{DefaultOnRequest, OnFailure, TraceLayer};
 use tracing::{Level, Span};
 use crate::common::AppState;
-use crate::routes::{login, profile, sign_up};
+use crate::routes::{login, profile, sign_out, sign_up};
 
-async fn root() -> &'static str {
-    "Hello, World!"
-}
 
 #[tokio::main]
 async fn main() {
@@ -31,15 +28,15 @@ async fn main() {
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
-        .connect(&std::env::var("DATABASE_URL").unwrap())
+        .connect(&dotenv::var("DATABASE_URL").unwrap())
         .await
         .expect("Cannot connect to DB!");
 
     let app = Router::new()
 
         .fallback_service(get_service(ServeDir::new("./ui")))
-        .route("/", get(root))
         .route("/sign-up", post(sign_up))
+        .route("/sign-out", post(sign_out))
         .route("/login", post(login))
         .route("/profile", get(profile))
         .layer(TraceLayer::new_for_http()

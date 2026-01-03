@@ -1,7 +1,8 @@
 use axum::extract::State;
 use axum::Form;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::{Json};
+use axum::response::{AppendHeaders, IntoResponse};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
@@ -34,7 +35,7 @@ pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredenti
 
 pub async fn login(State(pool): State<AppState>,
                    jar: CookieJar,
-                   Form(form): Form<UserCredentialsForm>) -> Result<CookieJar, AuthError> {
+                   Form(form): Form<UserCredentialsForm>) -> Result<impl IntoResponse, AuthError> {
     let matching_user = sqlx::query!(r#"
         select id, username, (crypt($2, password) = password) as verify from app.users where username = $1"#,
         form.username,
@@ -45,12 +46,15 @@ pub async fn login(State(pool): State<AppState>,
     let parsed_user = matching_user.unwrap().unwrap();
     if parsed_user.verify.expect("No matching DB") {
         let gen_token = generate_token(User::new(parsed_user.id, parsed_user.username)).unwrap();
-
+        let redirect_url = format!("{}/{}", &dotenv::var("BASE_URL").unwrap(), "home.html");
+        let mut headers = HeaderMap::new();
+        headers.insert("HX-Redirect", redirect_url.parse().unwrap());
         let mut cookie = Cookie::new("token", gen_token);
         cookie.set_http_only(true);
         cookie.set_same_site(SameSite::Lax);
         cookie.set_secure(true);
-        Ok(jar.add(cookie))
+
+        Ok((jar.add(cookie), headers))
     } else {
         Err(AuthError {
             message: "No token present to be extracted",
@@ -61,6 +65,13 @@ pub async fn login(State(pool): State<AppState>,
 
 pub async fn profile(AuthUser(user): AuthUser) -> Json<String> {
     Json(format!("user {:?}", user.username.as_str()))
+}
+
+pub async fn sign_out(AuthUser(user): AuthUser, jar: CookieJar) -> impl IntoResponse {
+    let mut headers = HeaderMap::new();
+    let redirect_url = format!("{}/{}", &dotenv::var("BASE_URL").unwrap(), "index.html");
+    headers.insert("HX-Redirect", redirect_url.parse().unwrap());
+    (jar.remove("token"), headers)
 }
 
 fn internal_error<E>(err: E) -> (StatusCode, String)
