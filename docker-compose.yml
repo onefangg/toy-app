@@ -17,6 +17,34 @@ services:
     networks:
       - full_stack
 
+#  api:
+#    build: .
+#    ports:
+#      - "3000:3000"
+#    depends_on:
+#      - db
+#    env_file: .env
+#    networks:
+#      - full_stack
+
+
+#  nginx:
+#    image: nginx:1.29.4
+#    ports:
+#      - "3002:443"
+#    environment:
+#      PROXY_PORT: 3000
+#      PROXY_PROTOCOL: "https"
+#    volumes:
+#      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+#      - ./certs/localhost+2.pem:/etc/nginx/certs/fullchain.pem
+#      - ./certs/localhost+2-key.pem:/etc/nginx/certs/privkey.pem
+#      - ./ui:/etc/nginx/html
+#    networks:
+#      - full_stack
+#    depends_on:
+#      - api
+
 volumes:
   db-data: {}
   cache:
