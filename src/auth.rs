@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use axum::{
     extract::{FromRef, FromRequestParts},
-    http::{request::Parts, StatusCode, HeaderMap},
+    http::{request::Parts, StatusCode},
 };
 use axum::response::IntoResponse;
 use axum_extra::extract::CookieJar;

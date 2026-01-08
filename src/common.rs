@@ -12,9 +12,3 @@ pub struct User {
     pub id: Uuid,
     pub username: String,
 }
-
-impl User {
-    pub fn new (id: Uuid, username: String) -> User {
-        User{id,username}
-    }
-}

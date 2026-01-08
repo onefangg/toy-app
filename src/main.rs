@@ -2,10 +2,10 @@ mod routes;
 mod common;
 mod auth;
 mod users;
+mod errors;
 
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::path::{PathBuf};
 use std::time::Duration;
 
 use axum::{routing::get, Router};
@@ -15,7 +15,7 @@ use sqlx::{postgres::PgPoolOptions};
 use tower_http::services::ServeDir;
 use tower_http::{trace, LatencyUnit};
 use tower_http::classify::ServerErrorsFailureClass;
-use tower_http::trace::{DefaultOnRequest, OnFailure, TraceLayer};
+use tower_http::trace::{DefaultOnRequest, TraceLayer};
 use tracing::{Level, Span};
 use crate::common::AppState;
 use crate::routes::{login, profile, sign_out, sign_up};
@@ -59,7 +59,7 @@ async fn main() {
                        .level(Level::INFO)
                        .latency_unit(LatencyUnit::Micros)
                    )
-            .on_failure(|error: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
+            .on_failure(|_error: ServerErrorsFailureClass, _latency: Duration, _span: &Span| {
                 tracing::debug!("something went wrong")
             })
         )
