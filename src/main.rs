@@ -6,12 +6,14 @@ mod errors;
 mod models;
 
 use std::net::SocketAddr;
-use std::path::{PathBuf};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{routing::get, Router};
 use axum::routing::{get_service, post};
 use axum_server::tls_rustls::RustlsConfig;
+use minijinja::{path_loader, Environment};
 use sqlx::{postgres::PgPoolOptions};
 use tower_http::services::ServeDir;
 use tower_http::{trace, LatencyUnit};
@@ -20,14 +22,17 @@ use tower_http::trace::{DefaultOnRequest, TraceLayer};
 use tracing::{Level, Span};
 use crate::common::AppState;
 
-use crate::routes::{login, profile, sign_out, sign_up};
+use crate::routes::{login, profile, root, sign_out, sign_up};
 
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
+    // start tracing
     tracing_subscriber::fmt()
         .with_max_level(Level::INFO)
         .init();
+
+    // set up https connections
     let tls_config = RustlsConfig::from_pem_file(
         PathBuf::from("./")
             .join("certs")
@@ -39,6 +44,7 @@ async fn main() {
         .await
         .expect("Certificate keys are expected to be present");
 
+    // set up connection to DB
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
@@ -46,8 +52,14 @@ async fn main() {
         .await
         .expect("Cannot connect to DB!");
 
+    let mut jinja_env = Environment::new();
+    let templates_dir = Path::new("ui"); // hard-coded variable :)
+    jinja_env.set_loader(path_loader(templates_dir));
+
+    // set up app layers
     let app = Router::new()
         .fallback_service(get_service(ServeDir::new("./ui")))
+        .route("/", get(root))
         .route("/sign-up", post(sign_up))
         .route("/sign-out", post(sign_out))
         .route("/login", post(login))
@@ -66,7 +78,7 @@ async fn main() {
                 tracing::debug!("something went wrong")
             })
         )
-        .with_state(AppState { pool });
+        .with_state(AppState { pool, template_engine: Arc::new(jinja_env) });
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     axum_server::bind_rustls(addr, tls_config)

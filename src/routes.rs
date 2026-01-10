@@ -1,16 +1,22 @@
 use axum::extract::State;
 use axum::Form;
-use axum::http::{HeaderMap,  StatusCode};
+use axum::http::{HeaderMap, StatusCode};
 use axum::{Json};
-use axum::response::{IntoResponse};
+use axum::response::{Html, IntoResponse};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
+use minijinja::context;
 use crate::auth::{generate_token};
 use crate::common::{AppState, AuthUser};
 use crate::errors::{ErrorResponse};
 use crate::models::{SignUpResponse, UserCredentialsForm};
 use crate::users::{check_user_password, insert_user};
 
+pub async fn root(State(app_state): State<AppState>) -> Html<String> {
+    let tmpl = app_state.template_engine.get_template("index.html").unwrap();
+    let html = tmpl.render(context! {});
+    Html(html.unwrap())
+}
 
 pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Result<Json<SignUpResponse>, ErrorResponse> {
     let create_user = insert_user(form.username, form.password, &pool.pool).await;

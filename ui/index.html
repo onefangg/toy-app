@@ -1,40 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Toy App</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
-</head>
-<body>
+{% extends "base.html" %}
+{% block body %}
+<div class="center flex-row" style="gap: 5px;">
+    <div class="flex-stack">
+        <h1>Login</h1>
+        <form id='login-form'
+              hx-encoding='application/x-www-form-urlencoded'
+              hx-post="/login"
+        >
+            <input name="username" type="text" placeholder="Enter your user name"/>
+            <input name="password" type="password" placeholder="Enter password"/>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+    <div class="flex-stack">
+        <h1>Sign Up</h1>
 
-    <div class="center flex-row" style="gap: 5px;">
-        <div class="flex-stack">
-            <h1>Login</h1>
-            <form id='login-form'
-                  hx-encoding='application/x-www-form-urlencoded'
-                  hx-post="/login"
-
-            >
-                <input name="username" type="text" placeholder="Enter your user name"/>
-                <input name="password" type="password" placeholder="Enter password"/>
-                <button type="submit">Login</button>
-            </form>
-        </div>
-        <div class="flex-stack">
-            <h1>Sign Up</h1>
-
-            <form id='sign-up-form'
-                  hx-encoding='application/x-www-form-urlencoded'
-                  hx-post="/sign-up"
-            >
-                <input name="username" type="text" placeholder="Enter your user name"/>
-                <input name="password" type="password" placeholder="Enter password"/>
-                <button type="submit" >Sign Up</button>
-            </form>
-        </div>
-
+        <form id='sign-up-form'
+              hx-encoding='application/x-www-form-urlencoded'
+              hx-post="/sign-up"
+        >
+            <input name="username" type="text" placeholder="Enter your user name"/>
+            <input name="password" type="password" placeholder="Enter password"/>
+            <button type="submit" >Sign Up</button>
+        </form>
     </div>
 
-</body>
-</html>
+</div>
+{% endblock %}
