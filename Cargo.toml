@@ -20,6 +20,14 @@ async-trait = { version = "0.1.89", features = [] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.20"
 axum-server = { version = "0.8.0", features = ["tls-rustls"] }
+url = { version = "2", features = ["serde"] }
 
 [lints.clippy]
 unwrap_used = "deny"
+# adapted from https://corrode.dev/blog/defensive-programming/#clippy-lints-for-defensive-programming
+indexing_slicing = "deny"
+fallible_impl_from = "deny"
+wildcard_enum_match_arm = "deny"
+unneeded_field_pattern = "deny"
+fn_params_excessive_bools = "deny"
+must_use_candidate = "deny"

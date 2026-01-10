@@ -3,13 +3,13 @@ use axum::{
     extract::{FromRef, FromRequestParts},
     http::{request::Parts, StatusCode},
 };
-use axum::response::IntoResponse;
 use axum_extra::extract::CookieJar;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use chrono::{Utc, Duration};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::common::{AppState, AuthUser, User};
+use crate::errors::AuthError;
 use crate::users::get_user;
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -18,20 +18,6 @@ struct Claims {
     exp: usize,
     iat: usize,
 
-}
-
-
-#[derive(Debug)]
-pub struct AuthError {
-    pub status_code: StatusCode,
-    pub message: &'static str,
-}
-
-impl IntoResponse for AuthError {
-    fn into_response(self) -> axum::response::Response {
-        tracing::error!("Auth error occurred with status code {:?} and {:?}", self.status_code, self.message);
-        self.status_code.into_response()
-    }
 }
 
 impl<S> FromRequestParts<S> for AuthUser
@@ -46,15 +32,12 @@ where
     ) -> Result<Self, Self::Rejection> {
         let app_state = AppState::from_ref(state);
         let headers = &parts.headers;
+        let jwt_secret = dotenv::var("JWT_KEY").expect("JWT_KEY must be set");
 
         let cookies = CookieJar::from_headers(headers);
-        let token = cookies.get("token").unwrap().value();
+        let token = cookies.get("token").expect("Cookies with key 'token' is expected!").value();
 
-        let jwt_secret = std::env::var("JWT_KEY").map_err(|_| AuthError {
-            message: "JWT key not present",
-            status_code: StatusCode::INTERNAL_SERVER_ERROR,
-        })?;
-        let claims = validate_token(&token, jwt_secret.as_str()).map_err(|_| AuthError {
+        let claims = validate_token(token, jwt_secret.as_str()).map_err(|_| AuthError {
             message: "Claims not matching",
             status_code: StatusCode::UNAUTHORIZED,
         })?;
@@ -64,7 +47,7 @@ where
         })?;
 
         let user = get_user(user_id, &app_state.pool).await.ok_or(AuthError {
-            message: "correct user",
+            message: "Cannot find user",
             status_code: StatusCode::UNAUTHORIZED,
         })?;
 
@@ -82,7 +65,7 @@ pub fn generate_token(user: User) -> Result<String, jsonwebtoken::errors::Error>
         exp: (current_timestamp + Duration::hours(3)).timestamp() as usize,
         iat: current_timestamp.timestamp() as usize,
     };
-    encode(&header, &claims, &EncodingKey::from_secret(std::env::var("JWT_KEY").unwrap().as_bytes()))
+    encode(&header, &claims, &EncodingKey::from_secret(dotenv::var("JWT_KEY").expect("JWT_KEY must be set").as_bytes()))
 }
 
 fn validate_token(token: &str, secret_key: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
