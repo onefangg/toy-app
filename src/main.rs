@@ -11,18 +11,17 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{routing::get, Router};
-use axum::routing::{get_service, post};
+use axum::routing::{post};
 use axum_server::tls_rustls::RustlsConfig;
 use minijinja::{path_loader, Environment};
 use sqlx::{postgres::PgPoolOptions};
-use tower_http::services::ServeDir;
 use tower_http::{trace, LatencyUnit};
 use tower_http::classify::ServerErrorsFailureClass;
 use tower_http::trace::{DefaultOnRequest, TraceLayer};
 use tracing::{Level, Span};
 use crate::common::AppState;
 
-use crate::routes::{login, profile, root, sign_out, sign_up};
+use crate::routes::{home, login, profile, root, sign_out, sign_up};
 
 #[tokio::main]
 async fn main() {
@@ -58,8 +57,8 @@ async fn main() {
 
     // set up app layers
     let app = Router::new()
-        .fallback_service(get_service(ServeDir::new("./ui")))
         .route("/", get(root))
+        .route("/home", get(home))
         .route("/sign-up", post(sign_up))
         .route("/sign-out", post(sign_out))
         .route("/login", post(login))

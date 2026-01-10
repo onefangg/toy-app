@@ -18,6 +18,12 @@ pub async fn root(State(app_state): State<AppState>) -> Html<String> {
     Html(html.unwrap())
 }
 
+pub async fn home(State(app_state): State<AppState>) -> Html<String> {
+    let tmpl = app_state.template_engine.get_template("home.html").unwrap();
+    let html = tmpl.render(context! {});
+    Html(html.unwrap())
+}
+
 pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Result<Json<SignUpResponse>, ErrorResponse> {
     let create_user = insert_user(form.username, form.password, &pool.pool).await;
     match create_user {
@@ -40,7 +46,7 @@ pub async fn login(State(pool): State<AppState>,
                 Ok(token) => token,
                 _ => Err(ErrorResponse { status_code: StatusCode::INTERNAL_SERVER_ERROR, message: "Unable to generate JWT token".to_string() })?,
             };
-            let redirect_url = format!("{}/{}", dotenv::var("BASE_URL").expect("BASE_URL must be set"), "home.html");
+            let redirect_url = "/home";
             let mut headers = HeaderMap::new();
             match redirect_url.parse() {
                 Ok(url) => headers.insert("HX-Redirect", url),
@@ -64,7 +70,7 @@ pub async fn profile(AuthUser(user): AuthUser) -> Json<String> {
 
 pub async fn sign_out(AuthUser(_user): AuthUser, jar: CookieJar) -> Result<impl IntoResponse, ErrorResponse>  {
     let mut headers = HeaderMap::new();
-    let redirect_url = format!("{}/{}", &dotenv::var("BASE_URL").expect("BASE_URL must be set"), "index.html");
+    let redirect_url = "/";
     let redirect_url_headers = match redirect_url.parse() {
         Ok(url) => url,
         Err(_) => Err ( ErrorResponse { status_code: StatusCode::INTERNAL_SERVER_ERROR, message: "Unable to redirect headers".to_string() })?,
