@@ -1,5 +1,4 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use serde::{Deserialize};
 use crate::errors::{PasswordError, UsernameError};
 
 #[derive(Deserialize)]
@@ -46,10 +45,4 @@ impl TryFrom<String> for Username {
 pub struct UserCredentialsForm {
     pub username: Username,
     pub password: Password,
-}
-
-
-#[derive(Deserialize, Serialize)]
-pub struct SignUpResponse {
-    pub user_id: Uuid,
 }

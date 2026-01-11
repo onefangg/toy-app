@@ -8,7 +8,7 @@ use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, 
 use chrono::{Utc, Duration};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::common::{AppState, AuthUser, User};
+use crate::common::{AppState, AuthUser};
 use crate::errors::AuthError;
 use crate::users::get_user;
 
@@ -56,12 +56,12 @@ where
 }
 
 
-pub fn generate_token(user: User) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn generate_token(user_id: Uuid) -> Result<String, jsonwebtoken::errors::Error> {
     let header = Header::new(Algorithm::HS256);
 
     let current_timestamp = Utc::now();
     let claims = Claims {
-        sub: user.id.to_string(),
+        sub: user_id.to_string(),
         exp: (current_timestamp + Duration::hours(3)).timestamp() as usize,
         iat: current_timestamp.timestamp() as usize,
     };
