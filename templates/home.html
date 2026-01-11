@@ -6,5 +6,7 @@
     <button hx-post="/sign-out">
         Sign out
     </button>
+    <div hx-ext="sse" sse-connect="/generate" sse-swap="message" sse-close="closeStream"  ></div>
+
 </div>
 {% endblock %}

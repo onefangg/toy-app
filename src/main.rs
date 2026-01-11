@@ -22,7 +22,7 @@ use tower_http::trace::{DefaultOnRequest, TraceLayer};
 use tracing::{Level, Span};
 use crate::common::AppState;
 
-use crate::routes::{home, login, profile, root, sign_out, sign_up};
+use crate::routes::{generate, home, login, profile, root, sign_out, sign_up};
 
 #[tokio::main]
 async fn main() {
@@ -65,6 +65,7 @@ async fn main() {
         .route("/sign-out", post(sign_out))
         .route("/login", post(login))
         .route("/profile", get(profile))
+        .route("/generate", get(generate)) // sample SSE route, iterates till 0 to 9 for each second
         .layer(TraceLayer::new_for_http()
                    .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                    .on_request(

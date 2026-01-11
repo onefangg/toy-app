@@ -1,10 +1,14 @@
+use std::convert::Infallible;
+use std::time::Duration;
 use axum::extract::State;
 use axum::Form;
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::{Html, IntoResponse};
+use axum::response::{Html, IntoResponse, Sse};
+use axum::response::sse::Event;
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use minijinja::context;
+use tokio_stream::{self as stream, Stream, StreamExt};
 use uuid::Uuid;
 use crate::auth::{generate_token};
 use crate::common::{AppState, AuthUser};
@@ -99,3 +103,21 @@ pub async fn sign_out(AuthUser(_user): AuthUser, jar: CookieJar) -> Result<impl 
     Ok((jar.remove("token"), headers))
 }
 
+pub async fn generate(AuthUser(_user):  AuthUser) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+
+    let events = (0..=10).map(|x| {
+        match x {
+            10 => Event::default().event("closeStream").data(x.to_string()),
+            _ =>  Event::default().data(x.to_string())
+        }
+    });
+    let stream = stream::iter(events)
+        .map(Ok)
+        .throttle(Duration::from_secs(1));
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    )
+}

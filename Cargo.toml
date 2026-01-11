@@ -22,6 +22,7 @@ tracing-subscriber = "0.3.20"
 axum-server = { version = "0.8.0", features = ["tls-rustls"] }
 url = { version = "2", features = ["serde"] }
 minijinja = { version = "2.14.0", features = ["loader"]}
+tokio-stream = "0.1.18"
 
 [lints.clippy]
 unwrap_used = "deny"
