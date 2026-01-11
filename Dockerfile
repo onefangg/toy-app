@@ -15,7 +15,7 @@ FROM debian:bookworm-slim AS deploy
 
 WORKDIR /app
 COPY ./certs ./certs
-COPY ./ui ./ui
+COPY ./templates ./templates
 COPY ./.env .env
 
 COPY --from=build app/target/release/toy-app .

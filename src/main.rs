@@ -11,12 +11,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{routing::get, Router};
-use axum::routing::{post};
+use axum::routing::{get_service, post};
 use axum_server::tls_rustls::RustlsConfig;
 use minijinja::{path_loader, Environment};
 use sqlx::{postgres::PgPoolOptions};
 use tower_http::{trace, LatencyUnit};
 use tower_http::classify::ServerErrorsFailureClass;
+use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultOnRequest, TraceLayer};
 use tracing::{Level, Span};
 use crate::common::AppState;
@@ -52,11 +53,12 @@ async fn main() {
         .expect("Cannot connect to DB!");
 
     let mut jinja_env = Environment::new();
-    let templates_dir = Path::new("ui"); // hard-coded variable :)
+    let templates_dir = Path::new("templates"); // hard-coded variable :)
     jinja_env.set_loader(path_loader(templates_dir));
 
     // set up app layers
     let app = Router::new()
+        .fallback_service(get_service(ServeDir::new("./static")))
         .route("/", get(root))
         .route("/home", get(home))
         .route("/sign-up", post(sign_up))

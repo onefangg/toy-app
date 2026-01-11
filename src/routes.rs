@@ -24,8 +24,8 @@ pub async fn home(State(app_state): State<AppState>) -> Html<String> {
     Html(html.unwrap())
 }
 
-pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Result<Json<SignUpResponse>, ErrorResponse> {
-    let create_user = insert_user(form.username, form.password, &pool.pool).await;
+pub async fn sign_up(State(app_state): State<AppState>, Form(form): Form<UserCredentialsForm>) -> Result<Json<SignUpResponse>, ErrorResponse> {
+    let create_user = insert_user(form.username, form.password, &app_state.pool).await;
     match create_user {
         Some(user_id) => Ok(Json(SignUpResponse { user_id })),
         None => Err(ErrorResponse {
@@ -36,10 +36,10 @@ pub async fn sign_up(State(pool): State<AppState>, Form(form): Form<UserCredenti
 
 }
 
-pub async fn login(State(pool): State<AppState>,
+pub async fn login(State(app_state): State<AppState>,
                    jar: CookieJar,
                    Form(form): Form<UserCredentialsForm>) -> Result<impl IntoResponse, ErrorResponse> {
-    let check_user =  check_user_password(form.username, form.password,&pool.pool ).await;
+    let check_user =  check_user_password(form.username, form.password,&app_state.pool ).await;
     match check_user {
         Ok(user) => {
             let gen_token = match generate_token(user) {
@@ -64,14 +64,22 @@ pub async fn login(State(pool): State<AppState>,
     }
 }
 
-pub async fn profile(AuthUser(user): AuthUser) -> Json<String> {
-    Json(format!("user {:?}", user.username.as_str()))
+pub async fn profile(State(app_state): State<AppState>, AuthUser(user): AuthUser) -> Result<Html<String>, ErrorResponse> {
+    let user_layout = "
+        <div>
+            {{ username }}
+        </div>
+    ";
+    let fragment = match app_state.template_engine.render_str(user_layout, context!{ username => user.username}) {
+        Ok(fragment) => fragment,
+        Err(_) => Err( ErrorResponse { status_code: StatusCode::INTERNAL_SERVER_ERROR, message: "Unable to parse user info".to_string() })?,
+    };
+    Ok(Html(fragment))
 }
 
 pub async fn sign_out(AuthUser(_user): AuthUser, jar: CookieJar) -> Result<impl IntoResponse, ErrorResponse>  {
     let mut headers = HeaderMap::new();
-    let redirect_url = "/";
-    let redirect_url_headers = match redirect_url.parse() {
+    let redirect_url_headers = match "/".parse() {
         Ok(url) => url,
         Err(_) => Err ( ErrorResponse { status_code: StatusCode::INTERNAL_SERVER_ERROR, message: "Unable to redirect headers".to_string() })?,
     };
